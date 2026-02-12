@@ -28,9 +28,9 @@ cd technitium-mcp-secure
 npm install
 npm run build
 
-# Register with Claude Code
+# Register with Claude Code (see "Generating an API Token" below first)
 claude mcp add technitium-dns \
-  --env TECHNITIUM_URL=https://10.0.0.15:5380 \
+  --env TECHNITIUM_URL=https://your-server-ip:5380 \
   --env TECHNITIUM_TOKEN=your-api-token \
   -- node /path/to/technitium-mcp-secure/dist/index.js
 ```
@@ -41,7 +41,7 @@ All configuration is via environment variables:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `TECHNITIUM_URL` | Yes | Server URL (e.g. `https://10.0.0.15:5380`) |
+| `TECHNITIUM_URL` | Yes | Server URL (e.g. `https://192.168.1.100:5380`) |
 | `TECHNITIUM_TOKEN` | One of token/password | API token (preferred) |
 | `TECHNITIUM_TOKEN_FILE` | One of token/password | Path to file containing token (must be mode 0600) |
 | `TECHNITIUM_PASSWORD` | One of token/password | Admin password (token is preferred) |
@@ -89,28 +89,69 @@ Sensitive environment variables are cleared from `process.env` after being read.
 
 ### Generating an API Token
 
-Create a non-expiring API token in the Technitium web admin:
+An API token is the recommended way to authenticate. Tokens avoid sending your admin password on every request and can be revoked independently.
 
-```
-Settings > Sessions > Create Token
-```
+**Option A: Web Admin UI**
 
-Or via the API:
+1. Open the Technitium web admin (e.g. `http://your-server-ip:5380`)
+2. Log in with your admin credentials
+3. Go to **Administration** (gear icon, top right)
+4. Scroll down to **Sessions**
+5. Under **Create API Token**, enter a name (e.g. `mcp-server`)
+6. Click **Create**
+7. Copy the token value shown - this is the only time it will be displayed
+
+**Option B: API (curl)**
 
 ```bash
-curl -X POST 'https://your-server:5380/api/user/createToken' \
-  -d 'user=admin&pass=yourpassword&tokenName=mcp-server'
+# Login first to get a session token
+curl -s -X POST 'http://your-server-ip:5380/api/user/login' \
+  -d 'user=admin&pass=yourpassword' | jq -r '.response.token'
+
+# Then create a non-expiring API token using the session token
+curl -s -X POST 'http://your-server-ip:5380/api/user/createToken' \
+  -d 'user=admin&pass=yourpassword&tokenName=mcp-server' | jq -r '.response.token'
 ```
+
+**Storing the token securely:**
+
+```bash
+# Option 1: Pass directly as env var (simplest)
+claude mcp add technitium-dns \
+  --env TECHNITIUM_TOKEN=your-token-here ...
+
+# Option 2: Use a token file (more secure - keeps token out of shell history)
+echo "your-token-here" > ~/.technitium-token
+chmod 600 ~/.technitium-token
+
+claude mcp add technitium-dns \
+  --env TECHNITIUM_TOKEN_FILE=~/.technitium-token ...
+```
+
+### Local Network (HTTP)
+
+If your Technitium server doesn't have TLS configured (common for LAN-only setups), you need to explicitly allow HTTP:
+
+```bash
+claude mcp add technitium-dns \
+  --env TECHNITIUM_URL=http://your-server-ip:5380 \
+  --env TECHNITIUM_TOKEN=your-token \
+  --env TECHNITIUM_ALLOW_HTTP=true \
+  -- node /path/to/technitium-mcp-secure/dist/index.js
+```
+
+A warning will be logged to stderr reminding you that credentials are sent in plaintext.
 
 ### Read-only Mode
 
-For monitoring-only use cases:
+For monitoring-only use cases, hide all write tools:
 
 ```bash
 claude mcp add technitium-dns-readonly \
-  --env TECHNITIUM_URL=https://10.0.0.15:5380 \
+  --env TECHNITIUM_URL=http://your-server-ip:5380 \
   --env TECHNITIUM_TOKEN=your-token \
   --env TECHNITIUM_READONLY=true \
+  --env TECHNITIUM_ALLOW_HTTP=true \
   -- node /path/to/dist/index.js
 ```
 
