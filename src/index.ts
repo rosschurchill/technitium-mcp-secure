@@ -9,20 +9,34 @@ import {
 import { loadConfig } from "./config.js";
 import { TechnitiumClient } from "./client.js";
 import { getAllTools } from "./tools/index.js";
+import { audit } from "./audit.js";
+import { RateLimiter } from "./rate-limit.js";
+import { sanitizeError, sanitizeResponse, maskUrl } from "./sanitize.js";
 
-function log(message: string): void {
-  console.error(`[technitium-mcp] ${message}`);
-}
+const VERSION = "1.1.0";
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const client = new TechnitiumClient(config);
-  const tools = getAllTools(client);
+  const allTools = getAllTools(client);
+
+  // Filter out write tools in readonly mode
+  const tools = config.readonly
+    ? allTools.filter((t) => t.readonly)
+    : allTools;
+
+  if (config.readonly) {
+    audit.logSecurity(
+      "readonly_mode",
+      `Exposing ${tools.length} of ${allTools.length} tools (write tools hidden)`
+    );
+  }
 
   const toolMap = new Map(tools.map((t) => [t.definition.name, t]));
+  const rateLimiter = new RateLimiter();
 
   const server = new Server(
-    { name: "technitium-mcp", version: "1.0.0" },
+    { name: "technitium-mcp", version: VERSION },
     { capabilities: { tools: {} } }
   );
 
@@ -37,24 +51,71 @@ async function main(): Promise<void> {
     if (!tool) {
       return {
         content: [
-          { type: "text", text: JSON.stringify({ error: `Unknown tool: ${name}` }) },
+          { type: "text" as const, text: JSON.stringify({ error: `Unknown tool: ${name}` }) },
         ],
+        isError: true,
       };
     }
 
-    try {
-      const result = await tool.handler((args || {}) as Record<string, unknown>);
-      return {
-        content: [{ type: "text", text: result }],
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      log(`Tool ${name} failed: ${message}`);
+    // Rate limit check
+    const rateCheck = rateLimiter.check(name);
+    if (!rateCheck.allowed) {
+      audit.logSecurity("rate_limited", `Tool ${name} rate limited`);
       return {
         content: [
           {
-            type: "text",
-            text: JSON.stringify({ error: message }, null, 2),
+            type: "text" as const,
+            text: JSON.stringify({
+              error: "Rate limited",
+              retryAfterMs: rateCheck.retryAfterMs,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const startTime = Date.now();
+
+    try {
+      const rawResult = await tool.handler((args || {}) as Record<string, unknown>);
+
+      // Sanitize the response
+      let sanitized: string;
+      try {
+        const parsed = JSON.parse(rawResult);
+        sanitized = JSON.stringify(sanitizeResponse(parsed), null, 2);
+      } catch {
+        sanitized = rawResult;
+      }
+
+      audit.logToolCall(
+        name,
+        (args || {}) as Record<string, unknown>,
+        "success",
+        Date.now() - startTime
+      );
+
+      return {
+        content: [{ type: "text" as const, text: sanitized }],
+      };
+    } catch (error) {
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      const message = sanitizeError(rawMessage);
+
+      audit.logToolCall(
+        name,
+        (args || {}) as Record<string, unknown>,
+        "error",
+        Date.now() - startTime,
+        message
+      );
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ error: message }),
           },
         ],
         isError: true,
@@ -66,7 +127,8 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    log(`Received ${signal}, shutting down...`);
+    audit.logShutdown(signal);
+    client.clearToken();
     await server.close();
     process.exit(0);
   };
@@ -75,12 +137,12 @@ async function main(): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
   const transport = new StdioServerTransport();
-  log(`Connecting to ${config.url}`);
+  audit.logStartup(VERSION, maskUrl(config.url));
   await server.connect(transport);
-  log("Server running on stdio");
 }
 
 main().catch((error) => {
-  log(`Fatal error: ${error}`);
+  const message = error instanceof Error ? error.message : String(error);
+  audit.logSecurity("fatal_error", sanitizeError(message));
   process.exit(1);
 });

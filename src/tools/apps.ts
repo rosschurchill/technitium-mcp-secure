@@ -13,6 +13,7 @@ export function appTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const data = await client.callOrThrow("/api/apps/list");
         return JSON.stringify(data, null, 2);

@@ -22,4 +22,5 @@ export interface ToolHandler {
 export interface ToolEntry {
   definition: ToolDefinition;
   handler: ToolHandler;
+  readonly: boolean;
 }

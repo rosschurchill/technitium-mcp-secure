@@ -1,5 +1,11 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import {
+  validateDomain,
+  validateIp,
+  validateRecordType,
+  validateStringLength,
+} from "../validate.js";
 
 export function logTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -29,7 +35,17 @@ export function logTools(client: TechnitiumClient): ToolEntry[] {
             },
             queryType: {
               type: "string",
-              enum: ["A", "AAAA", "CNAME", "MX", "NS", "PTR", "SOA", "TXT", "ANY"],
+              enum: [
+                "A",
+                "AAAA",
+                "CNAME",
+                "MX",
+                "NS",
+                "PTR",
+                "SOA",
+                "TXT",
+                "ANY",
+              ],
               description: "Filter by DNS query type",
             },
             responseCode: {
@@ -46,6 +62,7 @@ export function logTools(client: TechnitiumClient): ToolEntry[] {
           },
         },
       },
+      readonly: true,
       handler: async (args) => {
         const params: Record<string, string> = {
           pageNumber: String(args.pageNumber || 1),
@@ -54,10 +71,33 @@ export function logTools(client: TechnitiumClient): ToolEntry[] {
           ),
         };
 
-        if (args.domain) params.domain = args.domain as string;
-        if (args.clientIp) params.clientIpAddress = args.clientIp as string;
-        if (args.queryType) params.type = args.queryType as string;
-        if (args.responseCode) params.rcode = args.responseCode as string;
+        if (args.domain) {
+          params.domain = validateStringLength(
+            args.domain as string,
+            253,
+            "domain"
+          );
+        }
+        if (args.clientIp) {
+          params.clientIpAddress = validateIp(args.clientIp as string);
+        }
+        if (args.queryType) {
+          params.type = validateRecordType(args.queryType as string);
+        }
+        if (args.responseCode) {
+          const valid = new Set([
+            "NoError",
+            "ServerFailure",
+            "NxDomain",
+            "Refused",
+            "FormatError",
+          ]);
+          const code = args.responseCode as string;
+          if (!valid.has(code)) {
+            throw new Error(`Invalid response code: ${code}`);
+          }
+          params.rcode = code;
+        }
 
         const data = await client.callOrThrow("/api/logs/query", params);
         return JSON.stringify(data, null, 2);

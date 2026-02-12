@@ -1,5 +1,6 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import { validateDomain, validateRecordType, validateIp } from "../validate.js";
 
 export function recordTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -24,11 +25,12 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
           required: ["zone"],
         },
       },
+      readonly: true,
       handler: async (args) => {
         const params: Record<string, string> = {
-          zone: args.zone as string,
+          zone: validateDomain(args.zone as string),
         };
-        if (args.domain) params.domain = args.domain as string;
+        if (args.domain) params.domain = validateDomain(args.domain as string);
 
         const data = await client.callOrThrow(
           "/api/zones/records/get",
@@ -91,30 +93,32 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
           required: ["zone", "domain", "type", "value"],
         },
       },
+      readonly: false,
       handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
+        const domain = validateDomain(args.domain as string);
+        const recType = validateRecordType(args.type as string);
+        const value = args.value as string;
+
         const params: Record<string, string> = {
-          zone: args.zone as string,
-          domain: args.domain as string,
-          type: args.type as string,
+          zone,
+          domain,
+          type: recType,
           overwrite: args.overwrite ? "true" : "false",
         };
 
         if (args.ttl) params.ttl = String(args.ttl);
 
-        const recType = args.type as string;
-        const value = args.value as string;
-
         if (recType === "A" || recType === "AAAA") {
-          params.ipAddress = value;
-        } else if (recType === "CNAME" || recType === "NS" || recType === "PTR") {
-          params.cname = recType === "CNAME" ? value : "";
-          params.nameServer = recType === "NS" ? value : "";
-          params.ptrName = recType === "PTR" ? value : "";
-          if (recType === "CNAME") params.cname = value;
-          if (recType === "NS") params.nameServer = value;
-          if (recType === "PTR") params.ptrName = value;
+          params.ipAddress = validateIp(value);
+        } else if (recType === "CNAME") {
+          params.cname = validateDomain(value);
+        } else if (recType === "NS") {
+          params.nameServer = validateDomain(value);
+        } else if (recType === "PTR") {
+          params.ptrName = validateDomain(value);
         } else if (recType === "MX") {
-          params.exchange = value;
+          params.exchange = validateDomain(value);
           if (args.priority) params.preference = String(args.priority);
         } else if (recType === "TXT") {
           params.text = value;
@@ -148,35 +152,43 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
             },
             value: { type: "string", description: "Current record value" },
             newValue: { type: "string", description: "New record value" },
-            newDomain: { type: "string", description: "New domain name (to rename)" },
+            newDomain: {
+              type: "string",
+              description: "New domain name (to rename)",
+            },
             ttl: { type: "number", description: "New TTL in seconds" },
           },
           required: ["zone", "domain", "type", "value", "newValue"],
         },
       },
+      readonly: false,
       handler: async (args) => {
-        const recType = args.type as string;
+        const zone = validateDomain(args.zone as string);
+        const domain = validateDomain(args.domain as string);
+        const recType = validateRecordType(args.type as string);
+
         const params: Record<string, string> = {
-          zone: args.zone as string,
-          domain: args.domain as string,
+          zone,
+          domain,
           type: recType,
         };
 
-        if (args.newDomain) params.newDomain = args.newDomain as string;
+        if (args.newDomain)
+          params.newDomain = validateDomain(args.newDomain as string);
         if (args.ttl) params.ttl = String(args.ttl);
 
         const value = args.value as string;
         const newValue = args.newValue as string;
 
         if (recType === "A" || recType === "AAAA") {
-          params.ipAddress = value;
-          params.newIpAddress = newValue;
+          params.ipAddress = validateIp(value);
+          params.newIpAddress = validateIp(newValue);
         } else if (recType === "CNAME") {
-          params.cname = value;
-          params.newCname = newValue;
+          params.cname = validateDomain(value);
+          params.newCname = validateDomain(newValue);
         } else if (recType === "MX") {
-          params.exchange = value;
-          params.newExchange = newValue;
+          params.exchange = validateDomain(value);
+          params.newExchange = validateDomain(newValue);
         } else if (recType === "TXT") {
           params.text = value;
           params.newText = newValue;
@@ -192,36 +204,69 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
     {
       definition: {
         name: "dns_delete_record",
-        description: "Delete a specific DNS record from a zone.",
+        description:
+          "Delete a specific DNS record from a zone. Requires confirm=true to execute.",
         inputSchema: {
           type: "object",
           properties: {
             zone: { type: "string", description: "Zone domain name" },
-            domain: { type: "string", description: "Domain name of the record" },
+            domain: {
+              type: "string",
+              description: "Domain name of the record",
+            },
             type: {
               type: "string",
-              enum: ["A", "AAAA", "CNAME", "MX", "NS", "PTR", "TXT", "SRV", "CAA"],
+              enum: [
+                "A",
+                "AAAA",
+                "CNAME",
+                "MX",
+                "NS",
+                "PTR",
+                "TXT",
+                "SRV",
+                "CAA",
+              ],
               description: "Record type",
             },
             value: {
               type: "string",
               description: "Record value to delete (IP for A/AAAA, etc)",
             },
+            confirm: {
+              type: "boolean",
+              description:
+                "Must be true to confirm deletion. Without this, returns a warning instead of deleting.",
+            },
           },
           required: ["zone", "domain", "type", "value"],
         },
       },
+      readonly: false,
       handler: async (args) => {
-        const recType = args.type as string;
+        const zone = validateDomain(args.zone as string);
+        const domain = validateDomain(args.domain as string);
+        const recType = validateRecordType(args.type as string);
         const value = args.value as string;
+
+        if (args.confirm !== true) {
+          return JSON.stringify(
+            {
+              warning: `This will delete the ${recType} record for '${domain}' (value: ${value}). Set confirm=true to proceed.`,
+            },
+            null,
+            2
+          );
+        }
+
         const params: Record<string, string> = {
-          zone: args.zone as string,
-          domain: args.domain as string,
+          zone,
+          domain,
           type: recType,
         };
 
         if (recType === "A" || recType === "AAAA") {
-          params.ipAddress = value;
+          params.ipAddress = validateIp(value);
         } else if (recType === "CNAME") {
           params.cname = value;
         } else if (recType === "MX") {
@@ -237,7 +282,11 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
           params
         );
         return JSON.stringify(
-          { success: true, deleted: `${recType} ${args.domain} -> ${value}`, ...data },
+          {
+            success: true,
+            deleted: `${recType} ${domain} -> ${value}`,
+            ...data,
+          },
           null,
           2
         );

@@ -13,6 +13,7 @@ export function settingsTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const data = await client.callOrThrow("/api/settings/get");
         return JSON.stringify(data, null, 2);

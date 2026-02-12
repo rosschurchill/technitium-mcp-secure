@@ -1,9 +1,11 @@
 import { Config } from "./config.js";
 import { TechnitiumResponse } from "./types.js";
+import { audit } from "./audit.js";
 
 export class TechnitiumClient {
   private sessionToken: string | null = null;
   private config: Config;
+  private authInFlight: Promise<void> | null = null;
 
   constructor(config: Config) {
     this.config = config;
@@ -15,6 +17,7 @@ export class TechnitiumClient {
   private async authenticate(): Promise<void> {
     if (this.config.token) {
       this.sessionToken = this.config.token;
+      audit.logAuth("token_loaded", true);
       return;
     }
 
@@ -22,40 +25,55 @@ export class TechnitiumClient {
       throw new Error("No token or password configured");
     }
 
-    const params = new URLSearchParams({
-      user: "admin",
+    const body = new URLSearchParams({
+      user: this.config.user,
       pass: this.config.password,
     });
 
-    const resp = await fetch(
-      `${this.config.url}/api/user/login?${params.toString()}`
-    );
+    const resp = await fetch(`${this.config.url}/api/user/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
     const data = (await resp.json()) as TechnitiumResponse;
 
     if (data.status !== "ok" || !data.response) {
-      throw new Error(
-        `Authentication failed: ${data.errorMessage || "unknown error"}`
-      );
+      audit.logAuth("login", false, data.errorMessage);
+      throw new Error("Authentication failed");
     }
 
     this.sessionToken = data.response.token as string;
+    audit.logAuth("login", true);
+  }
+
+  private async ensureAuth(): Promise<void> {
+    if (this.sessionToken) return;
+
+    // Mutex: if auth is already in-flight, wait for it
+    if (this.authInFlight) {
+      await this.authInFlight;
+      return;
+    }
+
+    this.authInFlight = this.authenticate().finally(() => {
+      this.authInFlight = null;
+    });
+    await this.authInFlight;
   }
 
   async call(
     endpoint: string,
-    params: Record<string, string> = {},
-    method: "GET" | "POST" = "GET"
+    params: Record<string, string> = {}
   ): Promise<TechnitiumResponse> {
-    if (!this.sessionToken) {
-      await this.authenticate();
-    }
+    await this.ensureAuth();
 
-    const result = await this.doCall(endpoint, params, method);
+    const result = await this.doCall(endpoint, params);
 
     if (result.status === "invalid-token") {
       this.sessionToken = null;
-      await this.authenticate();
-      return this.doCall(endpoint, params, method);
+      audit.logAuth("token_expired", false);
+      await this.ensureAuth();
+      return this.doCall(endpoint, params);
     }
 
     return result;
@@ -63,41 +81,38 @@ export class TechnitiumClient {
 
   private async doCall(
     endpoint: string,
-    params: Record<string, string>,
-    method: "GET" | "POST"
+    params: Record<string, string>
   ): Promise<TechnitiumResponse> {
-    const allParams = { ...params, token: this.sessionToken! };
+    const body = new URLSearchParams({
+      ...params,
+      token: this.sessionToken!,
+    });
 
-    let resp: Response;
+    const resp = await fetch(`${this.config.url}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
 
-    if (method === "POST") {
-      resp = await fetch(`${this.config.url}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(allParams).toString(),
-      });
-    } else {
-      const qs = new URLSearchParams(allParams).toString();
-      resp = await fetch(`${this.config.url}${endpoint}?${qs}`);
-    }
-
-    const data = (await resp.json()) as TechnitiumResponse;
-    return data;
+    return (await resp.json()) as TechnitiumResponse;
   }
 
   async callOrThrow(
     endpoint: string,
-    params: Record<string, string> = {},
-    method: "GET" | "POST" = "GET"
+    params: Record<string, string> = {}
   ): Promise<Record<string, unknown>> {
-    const result = await this.call(endpoint, params, method);
+    const result = await this.call(endpoint, params);
 
     if (result.status !== "ok") {
       throw new Error(
-        `API error on ${endpoint}: ${result.errorMessage || result.status}`
+        result.errorMessage || `API error: ${result.status}`
       );
     }
 
     return result.response || {};
+  }
+
+  clearToken(): void {
+    this.sessionToken = null;
   }
 }

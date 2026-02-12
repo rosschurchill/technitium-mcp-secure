@@ -7,15 +7,36 @@ export function cacheTools(client: TechnitiumClient): ToolEntry[] {
       definition: {
         name: "dns_flush_cache",
         description:
-          "Flush the entire DNS cache. Forces all subsequent queries to be resolved fresh from upstream.",
+          "Flush the entire DNS cache. Forces all subsequent queries to be resolved fresh from upstream. Requires confirm=true to execute.",
         inputSchema: {
           type: "object",
-          properties: {},
+          properties: {
+            confirm: {
+              type: "boolean",
+              description:
+                "Must be true to confirm cache flush. Without this, returns a warning instead.",
+            },
+          },
         },
       },
-      handler: async () => {
+      readonly: false,
+      handler: async (args) => {
+        if (args.confirm !== true) {
+          return JSON.stringify(
+            {
+              warning:
+                "This will flush the entire DNS cache. All subsequent queries will be resolved fresh from upstream, which may temporarily increase latency. Set confirm=true to proceed.",
+            },
+            null,
+            2
+          );
+        }
         const data = await client.callOrThrow("/api/cache/flush");
-        return JSON.stringify({ success: true, message: "Cache flushed", ...data }, null, 2);
+        return JSON.stringify(
+          { success: true, message: "Cache flushed", ...data },
+          null,
+          2
+        );
       },
     },
     {
@@ -27,6 +48,7 @@ export function cacheTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const data = await client.callOrThrow("/api/cache/zones/list");
         return JSON.stringify(data, null, 2);
