@@ -1,5 +1,6 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import { validateDomain } from "../validate.js";
 
 export function blockingTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -12,6 +13,7 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const data = await client.callOrThrow("/api/blockedZones/list");
         return JSON.stringify(data, null, 2);
@@ -33,12 +35,14 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
           required: ["domain"],
         },
       },
+      readonly: false,
       handler: async (args) => {
+        const domain = validateDomain(args.domain as string);
         const data = await client.callOrThrow("/api/blockedZones/add", {
-          zone: args.domain as string,
+          zone: domain,
         });
         return JSON.stringify(
-          { success: true, blocked: args.domain, ...data },
+          { success: true, blocked: domain, ...data },
           null,
           2
         );
@@ -54,6 +58,7 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const data = await client.callOrThrow("/api/allowedZones/list");
         return JSON.stringify(data, null, 2);
@@ -75,12 +80,14 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
           required: ["domain"],
         },
       },
+      readonly: false,
       handler: async (args) => {
+        const domain = validateDomain(args.domain as string);
         const data = await client.callOrThrow("/api/allowedZones/add", {
-          zone: args.domain as string,
+          zone: domain,
         });
         return JSON.stringify(
-          { success: true, allowed: args.domain, ...data },
+          { success: true, allowed: domain, ...data },
           null,
           2
         );

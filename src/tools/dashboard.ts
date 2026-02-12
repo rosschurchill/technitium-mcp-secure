@@ -1,5 +1,6 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import { validatePeriod } from "../validate.js";
 
 export function dashboardTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -25,8 +26,11 @@ export function dashboardTools(client: TechnitiumClient): ToolEntry[] {
           },
         },
       },
+      readonly: true,
       handler: async (args) => {
-        const period = (args.period as string) || "LastDay";
+        const period = args.period
+          ? validatePeriod(args.period as string)
+          : "LastDay";
         const data = await client.callOrThrow("/api/dashboard/stats/get", {
           type: period,
         });
@@ -52,6 +56,7 @@ export function dashboardTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const [settings, stats] = await Promise.all([
           client.callOrThrow("/api/settings/get"),

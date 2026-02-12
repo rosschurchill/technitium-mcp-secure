@@ -1,5 +1,11 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import {
+  validateDomain,
+  validateRecordType,
+  validateIpOrHostname,
+  validateProtocol,
+} from "../validate.js";
 
 export function dnsClientTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -46,13 +52,20 @@ export function dnsClientTools(client: TechnitiumClient): ToolEntry[] {
           required: ["domain"],
         },
       },
+      readonly: true,
       handler: async (args) => {
         const params: Record<string, string> = {
-          domain: args.domain as string,
-          type: (args.type as string) || "A",
+          domain: validateDomain(args.domain as string),
+          type: args.type
+            ? validateRecordType(args.type as string)
+            : "A",
         };
-        if (args.server) params.server = args.server as string;
-        if (args.protocol) params.protocol = args.protocol as string;
+        if (args.server) {
+          params.server = validateIpOrHostname(args.server as string);
+        }
+        if (args.protocol) {
+          params.protocol = validateProtocol(args.protocol as string);
+        }
 
         const data = await client.callOrThrow(
           "/api/dnsClient/resolve",

@@ -1,5 +1,6 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import { validateDomain, validateZoneType } from "../validate.js";
 
 export function zoneTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -13,6 +14,7 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
           properties: {},
         },
       },
+      readonly: true,
       handler: async () => {
         const data = await client.callOrThrow("/api/zones/list");
         return JSON.stringify(data, null, 2);
@@ -39,10 +41,15 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
           required: ["zone"],
         },
       },
+      readonly: false,
       handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
+        const type = args.type
+          ? validateZoneType(args.type as string)
+          : "Primary";
         const data = await client.callOrThrow("/api/zones/create", {
-          zone: args.zone as string,
-          type: (args.type as string) || "Primary",
+          zone,
+          type,
         });
         return JSON.stringify(data, null, 2);
       },
@@ -50,7 +57,8 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
     {
       definition: {
         name: "dns_delete_zone",
-        description: "Delete a DNS zone and all its records.",
+        description:
+          "Delete a DNS zone and all its records. Requires confirm=true to execute.",
         inputSchema: {
           type: "object",
           properties: {
@@ -58,16 +66,30 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
               type: "string",
               description: "Zone domain name to delete",
             },
+            confirm: {
+              type: "boolean",
+              description:
+                "Must be true to confirm deletion. Without this, returns a warning instead of deleting.",
+            },
           },
           required: ["zone"],
         },
       },
+      readonly: false,
       handler: async (args) => {
-        const data = await client.callOrThrow("/api/zones/delete", {
-          zone: args.zone as string,
-        });
+        const zone = validateDomain(args.zone as string);
+        if (args.confirm !== true) {
+          return JSON.stringify(
+            {
+              warning: `This will permanently delete zone '${zone}' and ALL its records. Set confirm=true to proceed.`,
+            },
+            null,
+            2
+          );
+        }
+        const data = await client.callOrThrow("/api/zones/delete", { zone });
         return JSON.stringify(
-          { success: true, deleted: args.zone, ...data },
+          { success: true, deleted: zone, ...data },
           null,
           2
         );
@@ -89,9 +111,11 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
           required: ["zone"],
         },
       },
+      readonly: true,
       handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
         const data = await client.callOrThrow("/api/zones/options/get", {
-          zone: args.zone as string,
+          zone,
         });
         return JSON.stringify(data, null, 2);
       },

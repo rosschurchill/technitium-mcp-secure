@@ -1,6 +1,6 @@
 {
   "name": "technitium-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for Technitium DNS Server management and diagnostics",
   "type": "module",
   "bin": {
@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "audit": "npm audit"
   },
   "engines": {
     "node": ">=18.0.0"
