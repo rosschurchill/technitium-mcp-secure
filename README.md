@@ -165,10 +165,35 @@ claude mcp add technitium-dns-readonly \
 
 All tool calls are logged as JSONL to stderr with timestamps, tool name, sanitized arguments, result status, and duration. Sensitive values (tokens, passwords) are redacted before logging.
 
+## Compatibility
+
+Tested against **Technitium DNS Server v14.3** on Alpine Linux. All 17 API endpoints verified against the live v14 API.
+
+**Note:** Technitium's API paths changed between versions. If you see 404 errors, check that your server version is v14+. Earlier versions used different paths (e.g. `/api/allowedZones/list` instead of `/api/allowed/list`).
+
 ## Requirements
 
 - Node.js >= 18
 - Technitium DNS Server v14+
+
+## Changelog
+
+### v1.1.1
+- Fix `dns_resolve` missing required `server` parameter (now defaults to `this-server`)
+- Fix `dns_query_logs` missing `name` and `classPath` params for Query Logs (Sqlite) app
+- Fix `dns_list_allowed`, `dns_allow_domain` using wrong API path (`/api/allowedZones/*` -> `/api/allowed/*`)
+- Fix `dns_list_blocked`, `dns_block_domain` using wrong API path (`/api/blockedZones/*` -> `/api/blocked/*`)
+- Fix `dns_list_cache` using wrong API path (`/api/cache/zones/list` -> `/api/cache/list`)
+- Fix `dns_allow_domain`, `dns_block_domain` using wrong param name (`zone` -> `domain`)
+- All 17 API endpoints verified returning 200 against live Technitium v14.3
+
+### v1.1.0
+- Security hardening: input validation, audit logging, rate limiting, response sanitization
+- HTTPS enforcement with HTTP opt-in, read-only mode, confirmation for destructive ops
+- Token file support, auth mutex, POST-only API calls, env var clearing
+
+### v1.0.0
+- Initial release with 20 tools for DNS management
 
 ## License
 
