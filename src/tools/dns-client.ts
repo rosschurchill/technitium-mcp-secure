@@ -59,10 +59,10 @@ export function dnsClientTools(client: TechnitiumClient): ToolEntry[] {
           type: args.type
             ? validateRecordType(args.type as string)
             : "A",
+          server: args.server
+            ? validateIpOrHostname(args.server as string)
+            : "this-server",
         };
-        if (args.server) {
-          params.server = validateIpOrHostname(args.server as string);
-        }
         if (args.protocol) {
           params.protocol = validateProtocol(args.protocol as string);
         }
