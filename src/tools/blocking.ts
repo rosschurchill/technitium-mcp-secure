@@ -7,15 +7,24 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
     {
       definition: {
         name: "dns_list_blocked",
-        description: "List all blocked DNS zones (domains that are denied).",
+        description:
+          "List blocked DNS zones (domains that are denied). Returns a hierarchical tree — call with no domain to see top-level zones, then pass a domain (e.g. 'com') to drill into subdomains.",
         inputSchema: {
           type: "object",
-          properties: {},
+          properties: {
+            domain: {
+              type: "string",
+              description:
+                "Optional parent domain to list children of (e.g. 'com' to see all blocked .com domains). Omit to see top-level zones.",
+            },
+          },
         },
       },
       readonly: true,
-      handler: async () => {
-        const data = await client.callOrThrow("/api/blocked/list");
+      handler: async (args) => {
+        const params: Record<string, string> = {};
+        if (args.domain) params.domain = validateDomain(args.domain as string);
+        const data = await client.callOrThrow("/api/blocked/list", params);
         return JSON.stringify(data, null, 2);
       },
     },
@@ -52,15 +61,23 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
       definition: {
         name: "dns_list_allowed",
         description:
-          "List all allowed DNS zones (domains that bypass block lists).",
+          "List allowed DNS zones (domains that bypass block lists). Returns a hierarchical tree — call with no domain to see top-level zones, then pass a domain (e.g. 'com') to drill into subdomains.",
         inputSchema: {
           type: "object",
-          properties: {},
+          properties: {
+            domain: {
+              type: "string",
+              description:
+                "Optional parent domain to list children of (e.g. 'com' to see all allowed .com domains). Omit to see top-level zones.",
+            },
+          },
         },
       },
       readonly: true,
-      handler: async () => {
-        const data = await client.callOrThrow("/api/allowed/list");
+      handler: async (args) => {
+        const params: Record<string, string> = {};
+        if (args.domain) params.domain = validateDomain(args.domain as string);
+        const data = await client.callOrThrow("/api/allowed/list", params);
         return JSON.stringify(data, null, 2);
       },
     },
