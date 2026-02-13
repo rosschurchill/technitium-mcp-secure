@@ -50,7 +50,7 @@ export function cacheTools(client: TechnitiumClient): ToolEntry[] {
       },
       readonly: true,
       handler: async () => {
-        const data = await client.callOrThrow("/api/cache/zones/list");
+        const data = await client.callOrThrow("/api/cache/list");
         return JSON.stringify(data, null, 2);
       },
     },

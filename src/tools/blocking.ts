@@ -15,7 +15,7 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
       },
       readonly: true,
       handler: async () => {
-        const data = await client.callOrThrow("/api/blockedZones/list");
+        const data = await client.callOrThrow("/api/blocked/list");
         return JSON.stringify(data, null, 2);
       },
     },
@@ -38,8 +38,8 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
       readonly: false,
       handler: async (args) => {
         const domain = validateDomain(args.domain as string);
-        const data = await client.callOrThrow("/api/blockedZones/add", {
-          zone: domain,
+        const data = await client.callOrThrow("/api/blocked/add", {
+          domain,
         });
         return JSON.stringify(
           { success: true, blocked: domain, ...data },
@@ -60,7 +60,7 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
       },
       readonly: true,
       handler: async () => {
-        const data = await client.callOrThrow("/api/allowedZones/list");
+        const data = await client.callOrThrow("/api/allowed/list");
         return JSON.stringify(data, null, 2);
       },
     },
@@ -83,8 +83,8 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
       readonly: false,
       handler: async (args) => {
         const domain = validateDomain(args.domain as string);
-        const data = await client.callOrThrow("/api/allowedZones/add", {
-          zone: domain,
+        const data = await client.callOrThrow("/api/allowed/add", {
+          domain,
         });
         return JSON.stringify(
           { success: true, allowed: domain, ...data },
