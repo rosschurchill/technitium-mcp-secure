@@ -1,5 +1,6 @@
 import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
+import { validateDomain } from "../validate.js";
 
 export function cacheTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -42,15 +43,24 @@ export function cacheTools(client: TechnitiumClient): ToolEntry[] {
     {
       definition: {
         name: "dns_list_cache",
-        description: "List all zones currently in the DNS cache.",
+        description:
+          "List zones in the DNS cache. Returns a hierarchical tree — call with no domain to see top-level zones, then pass a domain (e.g. 'com') to drill into cached subdomains.",
         inputSchema: {
           type: "object",
-          properties: {},
+          properties: {
+            domain: {
+              type: "string",
+              description:
+                "Optional parent domain to list children of (e.g. 'com' to see cached .com domains). Omit to see top-level zones.",
+            },
+          },
         },
       },
       readonly: true,
-      handler: async () => {
-        const data = await client.callOrThrow("/api/cache/list");
+      handler: async (args) => {
+        const params: Record<string, string> = {};
+        if (args.domain) params.domain = validateDomain(args.domain as string);
+        const data = await client.callOrThrow("/api/cache/list", params);
         return JSON.stringify(data, null, 2);
       },
     },
