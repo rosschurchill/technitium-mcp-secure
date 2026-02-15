@@ -242,8 +242,8 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
       readonly: true,
       handler: async (args) => {
         const zone = validateDomain(args.zone as string);
-        const data = await client.callOrThrow("/api/zones/export", { zone });
-        return JSON.stringify(data, null, 2);
+        const text = await client.callRawText("/api/zones/export", { zone });
+        return JSON.stringify({ zone, zoneFile: text }, null, 2);
       },
     },
   ];
