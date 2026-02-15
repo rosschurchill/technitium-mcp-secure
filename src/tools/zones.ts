@@ -120,5 +120,131 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
         return JSON.stringify(data, null, 2);
       },
     },
+    {
+      definition: {
+        name: "dns_enable_zone",
+        description: "Enable a disabled DNS zone.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            zone: {
+              type: "string",
+              description: "Zone domain name to enable",
+            },
+          },
+          required: ["zone"],
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
+        const data = await client.callOrThrow("/api/zones/enable", { zone });
+        return JSON.stringify(
+          { success: true, enabled: zone, ...data },
+          null,
+          2
+        );
+      },
+    },
+    {
+      definition: {
+        name: "dns_disable_zone",
+        description:
+          "Disable a DNS zone. The zone will stop responding to queries but its records are preserved.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            zone: {
+              type: "string",
+              description: "Zone domain name to disable",
+            },
+          },
+          required: ["zone"],
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
+        const data = await client.callOrThrow("/api/zones/disable", { zone });
+        return JSON.stringify(
+          { success: true, disabled: zone, ...data },
+          null,
+          2
+        );
+      },
+    },
+    {
+      definition: {
+        name: "dns_set_zone_options",
+        description:
+          "Set configuration options for a zone. Pass the zone name plus any option key/value pairs to update (e.g. notify settings, zone transfer ACLs).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            zone: {
+              type: "string",
+              description: "Zone domain name",
+            },
+            disabled: {
+              type: "boolean",
+              description: "Set zone disabled state",
+            },
+            zoneTransferAllowedNetworks: {
+              type: "string",
+              description:
+                "Comma-separated list of IP/CIDR allowed for zone transfers",
+            },
+            notifyNameServers: {
+              type: "string",
+              description:
+                "Comma-separated list of name server IPs to notify on changes",
+            },
+          },
+          required: ["zone"],
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
+        const params: Record<string, string> = { zone };
+        for (const [key, value] of Object.entries(args)) {
+          if (key !== "zone" && value !== undefined) {
+            params[key] = String(value);
+          }
+        }
+        const data = await client.callOrThrow(
+          "/api/zones/options/set",
+          params
+        );
+        return JSON.stringify(
+          { success: true, zone, ...data },
+          null,
+          2
+        );
+      },
+    },
+    {
+      definition: {
+        name: "dns_export_zone",
+        description:
+          "Export a DNS zone file in standard BIND format. Returns the zone file as text.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            zone: {
+              type: "string",
+              description: "Zone domain name to export",
+            },
+          },
+          required: ["zone"],
+        },
+      },
+      readonly: true,
+      handler: async (args) => {
+        const zone = validateDomain(args.zone as string);
+        const data = await client.callOrThrow("/api/zones/export", { zone });
+        return JSON.stringify(data, null, 2);
+      },
+    },
   ];
 }

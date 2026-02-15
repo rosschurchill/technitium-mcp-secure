@@ -9,6 +9,7 @@ import { cacheTools } from "./cache.js";
 import { settingsTools } from "./settings.js";
 import { logTools } from "./logs.js";
 import { appTools } from "./apps.js";
+import { dnssecTools } from "./dnssec.js";
 
 export function getAllTools(client: TechnitiumClient): ToolEntry[] {
   return [
@@ -21,5 +22,6 @@ export function getAllTools(client: TechnitiumClient): ToolEntry[] {
     ...settingsTools(client),
     ...logTools(client),
     ...appTools(client),
+    ...dnssecTools(client),
   ];
 }
