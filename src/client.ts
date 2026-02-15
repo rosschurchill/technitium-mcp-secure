@@ -112,6 +112,57 @@ export class TechnitiumClient {
     return result.response || {};
   }
 
+  async callRawText(
+    endpoint: string,
+    params: Record<string, string> = {}
+  ): Promise<string> {
+    await this.ensureAuth();
+
+    const body = new URLSearchParams({
+      ...params,
+      token: this.sessionToken!,
+    });
+
+    const resp = await fetch(`${this.config.url}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    const text = await resp.text();
+
+    // Check if it's actually a JSON error response
+    try {
+      const json = JSON.parse(text) as TechnitiumResponse;
+      if (json.status === "invalid-token") {
+        this.sessionToken = null;
+        audit.logAuth("token_expired", false);
+        await this.ensureAuth();
+        const retryBody = new URLSearchParams({
+          ...params,
+          token: this.sessionToken!,
+        });
+        const retryResp = await fetch(`${this.config.url}${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: retryBody.toString(),
+        });
+        return retryResp.text();
+      }
+      if (json.status !== "ok") {
+        throw new Error(json.errorMessage || `API error: ${json.status}`);
+      }
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        // Not JSON — this is the raw text response we want
+        return text;
+      }
+      throw e;
+    }
+
+    return text;
+  }
+
   clearToken(): void {
     this.sessionToken = null;
   }
