@@ -110,5 +110,135 @@ export function blockingTools(client: TechnitiumClient): ToolEntry[] {
         );
       },
     },
+    {
+      definition: {
+        name: "dns_remove_allowed",
+        description:
+          "Remove a domain from the allow list. The domain will no longer bypass block lists.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            domain: {
+              type: "string",
+              description: "Domain name to remove from allow list",
+            },
+          },
+          required: ["domain"],
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        const domain = validateDomain(args.domain as string);
+        const data = await client.callOrThrow("/api/allowed/delete", {
+          domain,
+        });
+        return JSON.stringify(
+          { success: true, removed: domain, ...data },
+          null,
+          2
+        );
+      },
+    },
+    {
+      definition: {
+        name: "dns_remove_blocked",
+        description:
+          "Remove a domain from the block list. The domain will no longer be denied.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            domain: {
+              type: "string",
+              description: "Domain name to remove from block list",
+            },
+          },
+          required: ["domain"],
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        const domain = validateDomain(args.domain as string);
+        const data = await client.callOrThrow("/api/blocked/delete", {
+          domain,
+        });
+        return JSON.stringify(
+          { success: true, removed: domain, ...data },
+          null,
+          2
+        );
+      },
+    },
+    {
+      definition: {
+        name: "dns_flush_allowed",
+        description:
+          "Flush the entire allow list. All allowed domains will be removed. Requires confirm=true to execute.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            confirm: {
+              type: "boolean",
+              description:
+                "Must be true to confirm flush. Without this, returns a warning instead.",
+            },
+          },
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        if (args.confirm !== true) {
+          return JSON.stringify(
+            {
+              warning:
+                "This will remove ALL domains from the allow list. Set confirm=true to proceed.",
+            },
+            null,
+            2
+          );
+        }
+        const data = await client.callOrThrow("/api/allowed/flush");
+        return JSON.stringify(
+          { success: true, message: "Allow list flushed", ...data },
+          null,
+          2
+        );
+      },
+    },
+    {
+      definition: {
+        name: "dns_flush_blocked",
+        description:
+          "Flush the entire custom block list. All manually blocked domains will be removed. Requires confirm=true to execute.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            confirm: {
+              type: "boolean",
+              description:
+                "Must be true to confirm flush. Without this, returns a warning instead.",
+            },
+          },
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        if (args.confirm !== true) {
+          return JSON.stringify(
+            {
+              warning:
+                "This will remove ALL domains from the custom block list. Set confirm=true to proceed.",
+            },
+            null,
+            2
+          );
+        }
+        const data = await client.callOrThrow("/api/blocked/flush");
+        return JSON.stringify(
+          { success: true, message: "Block list flushed", ...data },
+          null,
+          2
+        );
+      },
+    },
   ];
 }

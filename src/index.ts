@@ -13,7 +13,7 @@ import { audit } from "./audit.js";
 import { RateLimiter } from "./rate-limit.js";
 import { sanitizeError, sanitizeResponse, maskUrl } from "./sanitize.js";
 
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 
 async function main(): Promise<void> {
   const config = loadConfig();

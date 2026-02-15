@@ -64,5 +64,32 @@ export function cacheTools(client: TechnitiumClient): ToolEntry[] {
         return JSON.stringify(data, null, 2);
       },
     },
+    {
+      definition: {
+        name: "dns_delete_cached",
+        description:
+          "Delete a specific domain from the DNS cache. Unlike flush, this only removes the specified domain.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            domain: {
+              type: "string",
+              description: "Domain name to delete from cache (e.g. example.com)",
+            },
+          },
+          required: ["domain"],
+        },
+      },
+      readonly: false,
+      handler: async (args) => {
+        const domain = validateDomain(args.domain as string);
+        const data = await client.callOrThrow("/api/cache/delete", { domain });
+        return JSON.stringify(
+          { success: true, deleted: domain, ...data },
+          null,
+          2
+        );
+      },
+    },
   ];
 }

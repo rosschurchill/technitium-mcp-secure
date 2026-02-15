@@ -94,5 +94,21 @@ export function dashboardTools(client: TechnitiumClient): ToolEntry[] {
         );
       },
     },
+    {
+      definition: {
+        name: "dns_check_update",
+        description:
+          "Check if a newer version of Technitium DNS Server is available.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      readonly: true,
+      handler: async () => {
+        const data = await client.callOrThrow("/api/user/checkForUpdate");
+        return JSON.stringify(data, null, 2);
+      },
+    },
   ];
 }
