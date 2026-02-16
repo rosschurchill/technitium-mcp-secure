@@ -19,7 +19,7 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
             domain: {
               type: "string",
               description:
-                "Optional specific domain to filter (e.g. www.theshellnet.com)",
+                "Optional specific domain to filter (e.g. www.theshellnet.com). Defaults to the zone name if omitted.",
             },
           },
           required: ["zone"],
@@ -27,10 +27,11 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
       },
       readonly: true,
       handler: async (args) => {
-        const params: Record<string, string> = {
-          zone: validateDomain(args.zone as string),
-        };
-        if (args.domain) params.domain = validateDomain(args.domain as string);
+        const zone = validateDomain(args.zone as string);
+        const domain = args.domain
+          ? validateDomain(args.domain as string)
+          : zone;
+        const params: Record<string, string> = { zone, domain };
 
         const data = await client.callOrThrow(
           "/api/zones/records/get",
