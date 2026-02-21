@@ -2,6 +2,34 @@ import { TechnitiumClient } from "../client.js";
 import { ToolEntry } from "../types.js";
 import { validateDomain, validateRecordType, validateIp } from "../validate.js";
 
+/** Parse a BIND-format zone export into structured records */
+function parseBind(
+  zone: string,
+  bindText: string
+): Array<{ name: string; ttl: number; type: string; value: string }> {
+  const records: Array<{ name: string; ttl: number; type: string; value: string }> = [];
+  const origin = zone.endsWith(".") ? zone : zone + ".";
+
+  for (const raw of bindText.split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith(";") || line.startsWith("$")) continue;
+
+    // Format: <name> <ttl> IN <type> <rdata...>
+    const parts = line.split(/\s+/);
+    if (parts.length < 5) continue;
+    const [name, ttlStr, , type, ...rdata] = parts;
+    const ttl = parseInt(ttlStr, 10);
+    if (isNaN(ttl)) continue;
+
+    const fqdn =
+      name === "@" ? zone : name.includes(".") ? name.replace(/\.$/, "") : `${name}.${zone}`;
+
+    records.push({ name: fqdn, ttl, type, value: rdata.join(" ") });
+  }
+
+  return records;
+}
+
 export function recordTools(client: TechnitiumClient): ToolEntry[] {
   return [
     {
@@ -63,23 +91,25 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
         }
 
         if (allZones.length === 1 && allZones[0].name === zone) {
-          // Exact single zone match — return its records directly
-          const data = await client.callOrThrow("/api/zones/records/get", {
+          // Exact single zone — export to get ALL records (apex + subdomains)
+          const bindText = await client.callRawTextGet("/api/zones/export", {
             zone,
-            domain: zone,
           });
-          return JSON.stringify(data, null, 2);
+          return JSON.stringify(
+            { zone, records: parseBind(zone, bindText) },
+            null,
+            2
+          );
         }
 
-        // Multiple zones or parent-level query — fetch all and combine
+        // Multiple zones or parent-level query — export each and combine
         const results: unknown[] = [];
         for (const z of allZones) {
           try {
-            const data = await client.callOrThrow("/api/zones/records/get", {
+            const bindText = await client.callRawTextGet("/api/zones/export", {
               zone: z.name,
-              domain: z.name,
             });
-            results.push({ zone: z.name, ...data });
+            results.push({ zone: z.name, records: parseBind(z.name, bindText) });
           } catch (e) {
             results.push({ zone: z.name, error: String(e) });
           }

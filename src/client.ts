@@ -163,6 +163,52 @@ export class TechnitiumClient {
     return text;
   }
 
+  async callRawTextGet(
+    endpoint: string,
+    params: Record<string, string> = {}
+  ): Promise<string> {
+    await this.ensureAuth();
+
+    const qs = new URLSearchParams({
+      ...params,
+      token: this.sessionToken!,
+    });
+
+    const resp = await fetch(`${this.config.url}${endpoint}?${qs.toString()}`, {
+      method: "GET",
+    });
+
+    const text = await resp.text();
+
+    try {
+      const json = JSON.parse(text) as TechnitiumResponse;
+      if (json.status === "invalid-token") {
+        this.sessionToken = null;
+        audit.logAuth("token_expired", false);
+        await this.ensureAuth();
+        const retryQs = new URLSearchParams({
+          ...params,
+          token: this.sessionToken!,
+        });
+        const retryResp = await fetch(
+          `${this.config.url}${endpoint}?${retryQs.toString()}`,
+          { method: "GET" }
+        );
+        return retryResp.text();
+      }
+      if (json.status !== "ok") {
+        throw new Error(json.errorMessage || `API error: ${json.status}`);
+      }
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return text;
+      }
+      throw e;
+    }
+
+    return text;
+  }
+
   clearToken(): void {
     this.sessionToken = null;
   }
