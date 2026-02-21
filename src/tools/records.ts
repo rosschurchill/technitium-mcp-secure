@@ -8,13 +8,17 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
       definition: {
         name: "dns_list_records",
         description:
-          "List DNS records in a zone. Optionally filter by a specific domain name within the zone.",
+          "List DNS records in a zone. Optionally filter by a specific domain name within the zone. " +
+          "When no domain is specified, returns all records across all zones matching the zone name " +
+          "(including subzones like grafana.theshellnet.com when zone=theshellnet.com). " +
+          "When domain is specified, returns records for that exact domain only.",
         inputSchema: {
           type: "object",
           properties: {
             zone: {
               type: "string",
-              description: "Zone domain name (e.g. theshellnet.com)",
+              description:
+                "Zone domain name (e.g. theshellnet.com). Can be a parent domain to list all subzones.",
             },
             domain: {
               type: "string",
@@ -28,16 +32,63 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
       readonly: true,
       handler: async (args) => {
         const zone = validateDomain(args.zone as string);
-        const domain = args.domain
-          ? validateDomain(args.domain as string)
-          : zone;
-        const params: Record<string, string> = { zone, domain };
 
-        const data = await client.callOrThrow(
-          "/api/zones/records/get",
-          params
+        if (args.domain) {
+          // Specific domain requested — query that domain directly
+          const domain = validateDomain(args.domain as string);
+          const data = await client.callOrThrow("/api/zones/records/get", {
+            zone,
+            domain,
+          });
+          return JSON.stringify(data, null, 2);
+        }
+
+        // No domain specified — find all zones that match or are subzones of the requested name
+        const zoneList = await client.callOrThrow("/api/zones/list");
+        const allZones = (
+          zoneList.zones as Array<{ name: string; internal: boolean }>
+        ).filter(
+          (z) =>
+            !z.internal &&
+            (z.name === zone || z.name.endsWith("." + zone))
         );
-        return JSON.stringify(data, null, 2);
+
+        if (allZones.length === 0) {
+          // No matching zones — fall back to direct query (will surface API error if zone missing)
+          const data = await client.callOrThrow("/api/zones/records/get", {
+            zone,
+            domain: zone,
+          });
+          return JSON.stringify(data, null, 2);
+        }
+
+        if (allZones.length === 1 && allZones[0].name === zone) {
+          // Exact single zone match — return its records directly
+          const data = await client.callOrThrow("/api/zones/records/get", {
+            zone,
+            domain: zone,
+          });
+          return JSON.stringify(data, null, 2);
+        }
+
+        // Multiple zones or parent-level query — fetch all and combine
+        const results: unknown[] = [];
+        for (const z of allZones) {
+          try {
+            const data = await client.callOrThrow("/api/zones/records/get", {
+              zone: z.name,
+              domain: z.name,
+            });
+            results.push({ zone: z.name, ...data });
+          } catch (e) {
+            results.push({ zone: z.name, error: String(e) });
+          }
+        }
+        return JSON.stringify(
+          { totalZones: results.length, zones: results },
+          null,
+          2
+        );
       },
     },
     {
