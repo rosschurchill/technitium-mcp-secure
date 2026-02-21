@@ -1,6 +1,6 @@
 {
   "name": "technitium-mcp",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "MCP server for Technitium DNS Server management and diagnostics",
   "type": "module",
   "bin": {
