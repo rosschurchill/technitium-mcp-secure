@@ -27,7 +27,7 @@ export function logTools(client: TechnitiumClient): ToolEntry[] {
             },
             domain: {
               type: "string",
-              description: "Filter by domain name (partial match)",
+              description: "Filter by domain name (exact match, e.g. github.com)",
             },
             clientIp: {
               type: "string",
@@ -74,7 +74,8 @@ export function logTools(client: TechnitiumClient): ToolEntry[] {
         };
 
         if (args.domain) {
-          params.domain = validateStringLength(
+          // API uses 'qname' (exact match on the DNS question name column)
+          params.qname = validateStringLength(
             args.domain as string,
             253,
             "domain"
