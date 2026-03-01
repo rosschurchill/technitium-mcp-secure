@@ -17,7 +17,7 @@ Built for use with [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - **Error sanitization** to prevent credential/path leakage in error messages
 - **Token file support** for secure credential storage
 - **Auth mutex** to prevent concurrent authentication races
-- **POST-only API calls** to keep tokens out of query strings and server logs
+- **POST-only API calls** for all mutating operations; zone export uses GET (required by Technitium API) with short-lived session tokens
 
 ## Quick Start
 

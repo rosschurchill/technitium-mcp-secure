@@ -206,9 +206,14 @@ export function zoneTools(client: TechnitiumClient): ToolEntry[] {
       readonly: false,
       handler: async (args) => {
         const zone = validateDomain(args.zone as string);
+        const allowed = new Set([
+          "disabled",
+          "zoneTransferAllowedNetworks",
+          "notifyNameServers",
+        ]);
         const params: Record<string, string> = { zone };
         for (const [key, value] of Object.entries(args)) {
-          if (key !== "zone" && value !== undefined) {
+          if (allowed.has(key) && value !== undefined) {
             params[key] = String(value);
           }
         }

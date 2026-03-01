@@ -38,7 +38,7 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
         description:
           "List DNS records in a zone. Optionally filter by a specific domain name within the zone. " +
           "When no domain is specified, returns all records across all zones matching the zone name " +
-          "(including subzones like grafana.theshellnet.com when zone=theshellnet.com). " +
+          "(including subzones like app.example.com when zone=example.com). " +
           "When domain is specified, returns records for that exact domain only.",
         inputSchema: {
           type: "object",
@@ -46,12 +46,12 @@ export function recordTools(client: TechnitiumClient): ToolEntry[] {
             zone: {
               type: "string",
               description:
-                "Zone domain name (e.g. theshellnet.com). Can be a parent domain to list all subzones.",
+                "Zone domain name (e.g. example.com). Can be a parent domain to list all subzones.",
             },
             domain: {
               type: "string",
               description:
-                "Optional specific domain to filter (e.g. www.theshellnet.com). Defaults to the zone name if omitted.",
+                "Optional specific domain to filter (e.g. www.example.com). Defaults to the zone name if omitted.",
             },
           },
           required: ["zone"],

@@ -58,14 +58,30 @@ export function settingsTools(client: TechnitiumClient): ToolEntry[] {
               description:
                 "Comma-separated list of block list URLs to use for domain blocking",
             },
+            reverseProxyNetworkACL: {
+              type: "string",
+              description:
+                "Comma-separated list of IP addresses trusted as reverse proxies (for X-Real-IP header processing)",
+            },
           },
         },
       },
       readonly: false,
       handler: async (args) => {
+        // Allowlist: only pass keys explicitly defined in the schema
+        const allowed = new Set([
+          "enableBlocking",
+          "forwarders",
+          "forwarderProtocol",
+          "dnssecValidation",
+          "preferIPv6",
+          "logQueries",
+          "blockListUrls",
+          "reverseProxyNetworkACL",
+        ]);
         const params: Record<string, string> = {};
         for (const [key, value] of Object.entries(args)) {
-          if (value !== undefined) {
+          if (allowed.has(key) && value !== undefined) {
             params[key] = String(value);
           }
         }
@@ -126,7 +142,7 @@ export function settingsTools(client: TechnitiumClient): ToolEntry[] {
       handler: async (args) => {
         const minutes =
           typeof args.minutes === "number" && args.minutes > 0
-            ? args.minutes
+            ? Math.min(args.minutes, 60)
             : 5;
         const data = await client.callOrThrow(
           "/api/settings/temporaryDisableBlocking",
