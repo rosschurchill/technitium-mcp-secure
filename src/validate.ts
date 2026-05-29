@@ -97,3 +97,16 @@ export function validateStringLength(value: string, maxLength: number, fieldName
   }
   return value;
 }
+
+const MAC_RE = /^[0-9a-fA-F]{2}([:-][0-9a-fA-F]{2}){5}$/;
+
+export function validateMacAddress(value: string, fieldName = "hardwareAddress"): string {
+  if (!value || typeof value !== "string") {
+    throw new Error(`${fieldName} is required`);
+  }
+  const trimmed = value.trim();
+  if (!MAC_RE.test(trimmed)) {
+    throw new Error(`Invalid ${fieldName}: expected colon- or dash-separated MAC (e.g. AA:BB:CC:DD:EE:FF)`);
+  }
+  return trimmed.replace(/:/g, "-").toUpperCase();
+}

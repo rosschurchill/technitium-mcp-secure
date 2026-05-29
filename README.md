@@ -6,7 +6,7 @@ Built for use with [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 
 ## Features
 
-- **39 tools** covering DNS zones, records, blocking, cache, settings, apps, DNSSEC, logs, and diagnostics
+- **55 tools** covering DNS zones, records, blocking, cache, settings, apps, DNSSEC, logs, diagnostics, and DHCP scopes/leases/reservations
 - **Input validation** on all parameters (RFC 1035 domain checks, IP validation, enum allowlists)
 - **HTTPS enforcement** with explicit HTTP opt-in for local networks
 - **Read-only mode** to expose only safe query tools
@@ -55,7 +55,7 @@ Sensitive environment variables are cleared from `process.env` after being read.
 
 ## Tools
 
-### Read-only (18 tools)
+### Read-only (24 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -77,8 +77,14 @@ Sensitive environment variables are cleared from `process.env` after being read.
 | `dns_get_app_config` | Get configuration for an installed app |
 | `dns_dnssec_info` | DNSSEC properties for a zone |
 | `dns_get_ds` | DS records for a DNSSEC-signed zone |
+| `dhcp_list_scopes` | Summary of all DHCP scopes |
+| `dhcp_get_scope` | Full configuration for one scope |
+| `dhcp_list_reservations` | All static reservations within a scope |
+| `dhcp_get_reservation` | Look up one reservation by MAC |
+| `dhcp_list_leases` | Active leases (Dynamic + Reserved); optional scope/type filter |
+| `dhcp_get_lease` | Look up one active lease by MAC or IP |
 
-### Write (21 tools)
+### Write (31 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -103,6 +109,18 @@ Sensitive environment variables are cleared from `process.env` after being read.
 | `dns_temp_disable_blocking` | Temporarily disable blocking (auto re-enables) |
 | `dns_install_app` | Install a DNS app from the app store |
 | `dns_uninstall_app` | Uninstall an app (requires `confirm: true`) |
+| `dhcp_create_scope` | Create a new DHCP scope (created disabled) |
+| `dhcp_update_scope` | Update an existing scope (list fields overwrite) |
+| `dhcp_delete_scope` | Delete a scope (requires `confirm: true`) |
+| `dhcp_set_scope_enabled` | Enable or disable a scope |
+| `dhcp_create_reservation` | Add a static MAC→IP reservation |
+| `dhcp_update_reservation` | Change reservation IP/hostname/comments (remove + re-add with rollback) |
+| `dhcp_delete_reservation` | Remove a reservation (requires `confirm: true`) |
+| `dhcp_delete_lease` | Remove an active lease (requires `confirm: true`) |
+| `dhcp_convert_lease_to_reservation` | Promote a dynamic lease to a reservation |
+| `dhcp_convert_reservation_to_lease` | Demote a reservation back to a dynamic lease |
+
+> **DHCP CRUD note:** active dynamic leases have no `create` tool — clients create them via the DHCP protocol. Reservation `read` operations compose `scopes/get` client-side because the Technitium API has no per-reservation read endpoint. Reservation `update` is implemented as remove + re-add with auto-rollback if the re-add fails.
 
 ## Security
 
@@ -186,9 +204,8 @@ All tool calls are logged as JSONL to stderr with timestamps, tool name, sanitiz
 
 ## Not Yet Implemented
 
-The Technitium API has ~173 endpoints. This MCP server covers the most useful 36. The following categories are available in the API but not yet exposed:
+The Technitium API has ~173 endpoints. This MCP server covers the most useful 48. The following categories are available in the API but not yet exposed:
 
-- **DHCP management** — scopes, leases, reservations (~12 endpoints)
 - **User & group administration** — create/delete users, manage groups, permissions (~15 endpoints)
 - **Cluster management** — multi-server clustering, health, failover (~15 endpoints)
 - **Zone import/clone/convert** — import from file, clone from another server, convert zone types
@@ -211,6 +228,9 @@ Tested against **Technitium DNS Server v14.3** on Alpine Linux. All 36 API endpo
 - Technitium DNS Server v14+
 
 ## Changelog
+
+### v1.3.0
+- Add 16 DHCP tools (55 total): full CRUD across scopes, reservations, and active leases. Covers `/api/dhcp/scopes/*` and `/api/dhcp/leases/*`. New `validateMacAddress` validator (accepts `aa:bb:..` and `AA-BB-..`, normalizes to uppercase-with-dashes). Reservation update is a safe remove + re-add with auto-rollback.
 
 ### v1.2.0
 - Add 19 new tools (39 total): remove/flush allowed & blocked, delete cached, enable/disable/configure/export zones, server settings management, temporary blocking disable, block list updates, app store/install/uninstall/config, DNSSEC info, update check
