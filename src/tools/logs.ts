@@ -65,8 +65,8 @@ export function logTools(client: TechnitiumClient): ToolEntry[] {
       readonly: true,
       handler: async (args) => {
         const params: Record<string, string> = {
-          name: "Query Logs (Sqlite)",
-          classPath: "QueryLogsSqlite.App",
+          name: process.env.TECHNITIUM_QUERYLOG_APP_NAME || "Query Logs (Sqlite)",
+          classPath: process.env.TECHNITIUM_QUERYLOG_CLASSPATH || "QueryLogsSqlite.App",
           pageNumber: String(args.pageNumber || 1),
           entriesPerPage: String(
             Math.min(Number(args.entriesPerPage) || 25, 100)

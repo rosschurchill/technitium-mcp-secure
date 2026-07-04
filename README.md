@@ -48,6 +48,8 @@ All configuration is via environment variables:
 | `TECHNITIUM_USER` | No | Username (default: `admin`) |
 | `TECHNITIUM_READONLY` | No | Set `true` to hide all write tools |
 | `TECHNITIUM_ALLOW_HTTP` | No | Set `true` to allow insecure HTTP connections |
+| `TECHNITIUM_QUERYLOG_APP_NAME` | No | Query Logs app name targeted by `dns_query_logs` (default: `Query Logs (Sqlite)`). Set to `Query Logs (PostgreSQL)` when using the PostgreSQL logging app. |
+| `TECHNITIUM_QUERYLOG_CLASSPATH` | No | Query Logs app class path (default: `QueryLogsSqlite.App`). Set to `QueryLogsPostgreSql.App` for the PostgreSQL app. |
 
 Authentication priority: `TECHNITIUM_TOKEN` > `TECHNITIUM_TOKEN_FILE` > `TECHNITIUM_PASSWORD`
 
