@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:mcpb": "npm run build && mcpb pack",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "audit": "npm audit"
@@ -19,6 +20,7 @@
     "@modelcontextprotocol/sdk": "^1.25.3"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "latest",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }

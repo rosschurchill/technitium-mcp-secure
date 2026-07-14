@@ -88,6 +88,20 @@ export function validateZoneType(type: string): string {
   return type;
 }
 
+// Accepts ISO 8601 dates/datetimes: "2024-01-15", "2024-01-15T10:30:00", "2024-01-15 10:30:00Z", etc.
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:?\d{2})?)?$/;
+
+export function validateDateTime(value: string, fieldName: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${fieldName} must be a string`);
+  }
+  const trimmed = value.trim();
+  if (!DATETIME_RE.test(trimmed)) {
+    throw new Error(`${fieldName} must be ISO 8601 format (e.g. 2024-01-15T10:30:00Z)`);
+  }
+  return trimmed;
+}
+
 export function validateStringLength(value: string, maxLength: number, fieldName: string): string {
   if (typeof value !== "string") {
     throw new Error(`${fieldName} must be a string`);

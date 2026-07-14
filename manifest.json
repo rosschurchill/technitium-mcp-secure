@@ -1,0 +1,83 @@
+{
+  "manifest_version": "0.3",
+  "name": "technitium-mcp",
+  "display_name": "Technitium DNS Manager",
+  "version": "1.2.4",
+  "description": "MCP server for Technitium DNS Server management and diagnostics",
+  "long_description": "Security-hardened MCP server exposing 39 DNS management tools against a Technitium DNS Server instance. Supports zone and record management, blocking lists, cache control, DNSSEC inspection, query logs, and DNS app installation. Features rate limiting, audit logging, read-only mode, and sensitive-value redaction.",
+  "author": {
+    "name": "Ross Churchill",
+    "url": "https://github.com/rosschurchill/technitium-mcp-secure"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rosschurchill/technitium-mcp-secure"
+  },
+  "keywords": ["dns", "technitium", "networking", "mcp", "security"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "TECHNITIUM_URL":        "${user_config.server_url}",
+        "TECHNITIUM_TOKEN":      "${user_config.api_token}",
+        "TECHNITIUM_PASSWORD":   "${user_config.password}",
+        "TECHNITIUM_USER":       "${user_config.username}",
+        "TECHNITIUM_READONLY":   "${user_config.readonly}",
+        "TECHNITIUM_ALLOW_HTTP": "${user_config.allow_http}"
+      }
+    }
+  },
+  "user_config": {
+    "server_url": {
+      "type": "string",
+      "title": "Server URL",
+      "description": "URL of your Technitium DNS server (e.g. https://192.168.1.100:53443)",
+      "required": true
+    },
+    "api_token": {
+      "type": "string",
+      "title": "API Token",
+      "description": "API token for authentication — preferred over password.",
+      "sensitive": true,
+      "required": false
+    },
+    "password": {
+      "type": "string",
+      "title": "Admin Password",
+      "description": "Admin password — only used if no API token is provided.",
+      "sensitive": true,
+      "required": false
+    },
+    "username": {
+      "type": "string",
+      "title": "Username",
+      "description": "Admin username (default: admin)",
+      "required": false,
+      "default": "admin"
+    },
+    "readonly": {
+      "type": "boolean",
+      "title": "Read-Only Mode",
+      "description": "When enabled, exposes only the 18 read-only query tools and hides all write operations",
+      "required": false,
+      "default": false
+    },
+    "allow_http": {
+      "type": "boolean",
+      "title": "Allow HTTP",
+      "description": "Allow insecure HTTP connections. Only enable this if your Technitium server is on a trusted local network with no HTTPS configured.",
+      "required": false,
+      "default": false
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}

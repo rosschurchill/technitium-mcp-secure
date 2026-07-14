@@ -1,0 +1,12 @@
+src/
+*.ts
+tsconfig.json
+*.tsbuildinfo
+.env
+.env.*
+*.token
+*.mcpb
+.gitignore
+.claude/
+node_modules/typescript/
+node_modules/@types/
