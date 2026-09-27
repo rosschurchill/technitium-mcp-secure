@@ -4,6 +4,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "./config.js";
@@ -37,11 +39,22 @@ async function main(): Promise<void> {
 
   const server = new Server(
     { name: "technitium-mcp", version: VERSION },
-    { capabilities: { tools: {} } }
+    { capabilities: { tools: {}, resources: {}, prompts: {} } }
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.map((t) => t.definition),
+  }));
+
+  // This server exposes neither resources nor prompts, but answering the list
+  // methods with empty results keeps aggregating proxies from treating the
+  // -32601 as a backend failure.
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: [],
+  }));
+
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts: [],
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
